@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-atelier: #F8F8FA;
+    --bg-paper: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --text-primary: #0A0A0C;
+    --text-secondary: #52525B;
+    --text-muted: #71717A;
+    --border-subtle: #E4E4E8;
+    --border-street: #27272A;
+    --border-gold: #0A0A0C;
+    --accent-gold: #CCFF00;
+    --accent-volt: #CCFF00;
+    --accent-orange: #FF4600;
+    --accent-blue: #2563EB;
+  }
+
+  body {
+    background-color: var(--bg-atelier);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+}
+
+/* Streetwear Typography Utility Classes */
+.font-display {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.font-grotesk {
+  font-family: 'Space Grotesk', -apple-system, sans-serif;
+}
+
+.font-tech {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Continuous Streetwear Marquee Animation */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Custom Embroidery Stitch Simulations */
+.stitch-border {
+  border: 1px dashed #18181B;
+  background-clip: padding-box;
+}
+
+.stitch-effect-text {
+  text-shadow: 
+    0.5px 0.5px 0px rgba(0,0,0,0.25),
+    -0.5px -0.5px 0px rgba(255,255,255,0.4);
+  letter-spacing: 0.05em;
+}
+
+.satin-stitch {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,0.18),
+    rgba(255,255,255,0.18) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+.puff-3d {
+  filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.45));
+}
+
+/* Technical Blueprint Grid for T-Shirt Studio */
+.atelier-grid {
+  background-size: 20px 20px;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+}
+
+.dark-grid {
+  background-size: 24px 24px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F4F4F6;
+}
+::-webkit-scrollbar-thumb {
+  background: #A1A1AA;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #18181B;
+}
