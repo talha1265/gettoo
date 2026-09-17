@@ -119,6 +119,8 @@ export type OrderStatus =
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 
+export type PaymentGateway = 'PAYU' | 'RAZORPAY' | 'UPI' | 'CARD' | 'NETBANKING' | 'COD';
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -131,16 +133,19 @@ export interface Order {
   customizationFee: number;
   shippingFee: number;
   discount: number;
+  discountCode?: string;
   totalAmount: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
-  paymentGateway: 'PAYU';
+  paymentGateway: PaymentGateway;
+  paymentTransactionId?: string;
   payuTxnId?: string;
   payuMihpayId?: string;
   payuMode?: string;
   shippingAddress: ShippingAddress;
   trackingNumber?: string;
   courierName?: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
   stitchProgressPercentage?: number;

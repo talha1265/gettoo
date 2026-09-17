@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { 
   X, 
@@ -15,9 +16,9 @@ import {
   Lock
 } from 'lucide-react';
 import { useAtelier } from '@/lib/store';
-import PayUCheckoutModal from './PayUCheckoutModal';
 
 export default function CartDrawer() {
+  const router = useRouter();
   const { 
     cart, 
     isCartOpen, 
@@ -28,7 +29,6 @@ export default function CartDrawer() {
     cartCount
   } = useAtelier();
 
-  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
 
   if (!isCartOpen) return null;
 
@@ -252,22 +252,23 @@ export default function CartDrawer() {
                   </div>
                 </div>
 
-                <div className="pt-1">
+                <div className="space-y-2 pt-1">
                   <button
                     onClick={() => {
-                      setCheckoutModalOpen(true);
+                      setIsCartOpen(false);
+                      router.push('/checkout');
                     }}
-                    className="w-full py-3.5 px-4 bg-[#0A0A0C] hover:bg-zinc-800 text-[#CCFF00] rounded-xl font-mono font-bold text-xs tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2 group"
+                    className="w-full py-3.5 px-4 bg-[#0A0A0C] hover:bg-zinc-800 text-[#CCFF00] rounded-xl font-mono font-bold text-xs tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2 group cursor-pointer"
                   >
                     <Lock size={14} className="text-[#CCFF00]" />
-                    <span>PAYU PREPAID CHECKOUT</span>
+                    <span>PAY VIA PAYU • SECURE CHECKOUT</span>
                     <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 </div>
 
                 <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-zinc-500 pt-1">
                   <ShieldCheck size={12} className="text-black" />
-                  <span>256-BIT ENCRYPTED • PAYU VERIFIED</span>
+                  <span>256-BIT ENCRYPTED • PAYU GATEWAY • PREPAID ONLY</span>
                 </div>
               </div>
 
@@ -277,10 +278,6 @@ export default function CartDrawer() {
         </div>
       </div>
 
-      {/* PayU Checkout Modal */}
-      {checkoutModalOpen && (
-        <PayUCheckoutModal onClose={() => setCheckoutModalOpen(false)} />
-      )}
     </>
   );
 }

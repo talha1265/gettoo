@@ -42,7 +42,26 @@ class DataStore {
   }
 
   getOrderById(id: string): Order | undefined {
-    return this.orders.find((o) => o.id === id || o.orderNumber === id);
+    const normalized = (id || '').trim().toLowerCase();
+    return this.orders.find((o) => 
+      o.id.toLowerCase() === normalized || 
+      o.orderNumber.toLowerCase() === normalized ||
+      (o.payuTxnId && o.payuTxnId.toLowerCase() === normalized) ||
+      (o.paymentTransactionId && o.paymentTransactionId.toLowerCase() === normalized)
+    );
+  }
+
+  findOrdersByQuery(query: string): Order[] {
+    const q = (query || '').trim().toLowerCase();
+    if (!q) return this.orders;
+    return this.orders.filter((o) =>
+      o.orderNumber.toLowerCase().includes(q) ||
+      o.customerEmail.toLowerCase().includes(q) ||
+      o.customerPhone.toLowerCase().includes(q) ||
+      o.customerName.toLowerCase().includes(q) ||
+      (o.payuTxnId && o.payuTxnId.toLowerCase().includes(q)) ||
+      (o.paymentTransactionId && o.paymentTransactionId.toLowerCase().includes(q))
+    );
   }
 
   createOrder(orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>): Order {

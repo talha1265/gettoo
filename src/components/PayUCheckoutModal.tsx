@@ -1,20 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { 
-  X, 
-  Lock, 
-  ShieldCheck, 
-  CreditCard, 
-  Smartphone, 
-  CheckCircle2, 
-  AlertCircle, 
-  Loader2, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  X,
+  Lock,
+  ShieldCheck,
+  Loader2,
   ArrowRight,
-  Sparkles
+  ExternalLink,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { useAtelier } from '@/lib/store';
 import { ShippingAddress } from '@/lib/types';
 
@@ -23,34 +17,54 @@ interface PayUCheckoutModalProps {
 }
 
 export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
-  const router = useRouter();
-  const { cart, cartTotal, clearCart, user, showToast, setIsCartOpen } = useAtelier();
+  const { cart, cartTotal, user, showToast } = useAtelier();
 
   const [loading, setLoading] = useState(false);
-  const [paymentStep, setPaymentStep] = useState<'DETAILS' | 'PAYU_GATEWAY'>('DETAILS');
+  const [paymentStep, setPaymentStep] = useState<'DETAILS' | 'REDIRECTING'>('DETAILS');
   const [payuPayload, setPayuPayload] = useState<any>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Address form
   const [address, setAddress] = useState<ShippingAddress>({
-    fullName: user?.name || 'Talha Al-Khatib',
-    email: user?.email || 'talha@gettoo.atelier',
-    phone: user?.phone || '+91 98765 01234',
-    street: '42 Rue de l’Atelier, Heritage Enclave',
-    landmark: 'Near Silk Mills',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    postalCode: '400001',
+    fullName: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    street: '',
+    landmark: '',
+    city: '',
+    state: '',
+    postalCode: '',
     country: 'India',
   });
-
-  const [paymentMode, setPaymentMode] = useState<'UPI' | 'CC' | 'DC' | 'NB'>('UPI');
 
   const freeShipping = cartTotal >= 1999;
   const shippingFee = freeShipping ? 0 : 99;
   const grandTotal = cartTotal + shippingFee;
 
+  // Auto-submit the hidden form to PayU when payload is ready
+  useEffect(() => {
+    if (paymentStep === 'REDIRECTING' && payuPayload && formRef.current) {
+      // Small delay to let the user see the "Redirecting" state
+      const timer = setTimeout(() => {
+        formRef.current?.submit();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentStep, payuPayload]);
+
   const handleProceedToPayU = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (cart.length === 0) {
+      showToast('Your bag is empty', 'error');
+      return;
+    }
+
+    if (!address.fullName || !address.email || !address.phone || !address.street || !address.postalCode) {
+      showToast('Please fill all required shipping fields', 'error');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -70,59 +84,13 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
       const data = await res.json();
       if (data.success) {
         setPayuPayload(data.payload);
-        setPaymentStep('PAYU_GATEWAY');
+        setPaymentStep('REDIRECTING');
       } else {
         showToast(data.message || 'Failed to initiate PayU payment', 'error');
       }
     } catch (err) {
       console.error(err);
-      showToast('Error connecting to PayU gateway', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Complete simulated payment callback
-  const handleSimulatePayUSuccess = async () => {
-    setLoading(true);
-    try {
-      const callbackRes = await fetch('/api/payu/callback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          txnid: payuPayload.txnid,
-          status: 'success',
-          amount: payuPayload.amount,
-          productinfo: payuPayload.productinfo,
-          firstname: payuPayload.firstname,
-          email: payuPayload.email,
-          mode: paymentMode,
-          mihpayid: `MIH_${Math.floor(100000000 + Math.random() * 900000000)}`,
-        }),
-      });
-
-      const result = await callbackRes.json();
-      if (result.success) {
-        clearCart();
-        setIsCartOpen(false);
-        onClose();
-
-        try {
-          confetti({
-            particleCount: 100,
-            spread: 80,
-            origin: { y: 0.5 },
-          });
-        } catch (e) {}
-
-        showToast('PayU Prepaid Payment Confirmed! Order placed successfully.');
-        router.push(`/order-success/${result.order.orderNumber}`);
-      } else {
-        showToast('Payment verification failed', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Error confirming PayU transaction', 'error');
+      showToast('Error connecting to payment gateway', 'error');
     } finally {
       setLoading(false);
     }
@@ -131,7 +99,7 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1A1817]/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="relative bg-white max-w-lg w-full rounded-2xl shadow-2xl border border-[#E8E4DC] overflow-hidden animate-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="p-5 border-b border-[#E8E4DC] bg-[#FAF8F5] flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -140,7 +108,7 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
             </div>
             <div>
               <h3 className="font-serif text-base font-bold text-[#1A1817]">
-                PayU Prepaid Checkout
+                PayU Secure Checkout
               </h3>
               <p className="text-[10px] text-[#787165] font-mono uppercase tracking-wider">
                 256-bit Encrypted Transaction
@@ -149,7 +117,8 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-[#8C8578] hover:text-[#1A1817] rounded-lg hover:bg-[#EFECE5]"
+            disabled={paymentStep === 'REDIRECTING'}
+            className="p-1.5 text-[#8C8578] hover:text-[#1A1817] rounded-lg hover:bg-[#EFECE5] disabled:opacity-50"
           >
             <X size={18} />
           </button>
@@ -158,7 +127,7 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
         {paymentStep === 'DETAILS' ? (
           /* Step 1: Delivery Details */
           <form onSubmit={handleProceedToPayU} className="p-6 space-y-4">
-            
+
             {/* Amount Banner */}
             <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E8E4DC] flex items-center justify-between">
               <div>
@@ -179,7 +148,7 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-medium text-[#666] mb-1">Full Name</label>
+                  <label className="block text-[11px] font-medium text-[#666] mb-1">Full Name *</label>
                   <input
                     type="text"
                     required
@@ -189,7 +158,7 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-[#666] mb-1">Phone Number</label>
+                  <label className="block text-[11px] font-medium text-[#666] mb-1">Phone Number *</label>
                   <input
                     type="tel"
                     required
@@ -201,7 +170,7 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-[#666] mb-1">Email Address</label>
+                <label className="block text-[11px] font-medium text-[#666] mb-1">Email Address *</label>
                 <input
                   type="email"
                   required
@@ -212,7 +181,7 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-[#666] mb-1">Street Address</label>
+                <label className="block text-[11px] font-medium text-[#666] mb-1">Street Address *</label>
                 <input
                   type="text"
                   required
@@ -224,7 +193,7 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-[11px] font-medium text-[#666] mb-1">City</label>
+                  <label className="block text-[11px] font-medium text-[#666] mb-1">City *</label>
                   <input
                     type="text"
                     required
@@ -234,7 +203,7 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-[#666] mb-1">State</label>
+                  <label className="block text-[11px] font-medium text-[#666] mb-1">State *</label>
                   <input
                     type="text"
                     required
@@ -244,7 +213,7 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-[#666] mb-1">Pincode</label>
+                  <label className="block text-[11px] font-medium text-[#666] mb-1">Pincode *</label>
                   <input
                     type="text"
                     required
@@ -256,137 +225,103 @@ export default function PayUCheckoutModal({ onClose }: PayUCheckoutModalProps) {
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-[#1A1817] hover:bg-[#33302C] text-white rounded-xl font-semibold text-xs tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[#1A1817] hover:bg-[#33302C] text-white rounded-xl font-semibold text-xs tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
               >
                 {loading ? (
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
                   <>
-                    <span>Continue to PayU Payment</span>
+                    <Lock size={14} />
+                    <span>Pay ₹{grandTotal.toLocaleString('en-IN')} via PayU</span>
                     <ArrowRight size={14} />
                   </>
                 )}
               </button>
+
+              <p className="flex items-center justify-center gap-1.5 text-[10px] text-[#8C867B] pt-1">
+                <ShieldCheck size={12} className="text-[#5A705E]" />
+                <span>You will be redirected to PayU's secure hosted checkout page</span>
+              </p>
             </div>
           </form>
         ) : (
-          /* Step 2: PayU Gateway Verification & Sandbox Simulation */
-          <div className="p-6 space-y-4">
-            
-            {/* PayU Gateway Info Box */}
-            <div className="p-4 bg-[#F5F2EB] rounded-xl border border-[#DFD8CB] space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="font-serif text-sm font-bold text-[#1A1817] flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  PayU Hosted Gateway Simulation
-                </span>
-                <span className="text-[10px] font-mono bg-[#1A1817] text-white px-2 py-0.5 rounded">
-                  {payuPayload?.env || 'TEST'} MODE
-                </span>
+          /* Step 2: Redirecting to PayU */
+          <div className="p-8 space-y-6 text-center">
+
+            {/* Animated redirecting state */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full bg-[#FAF8F5] border-2 border-[#E8E4DC] flex items-center justify-center">
+                  <Loader2 size={28} className="text-[#C5A059] animate-spin" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                  <Lock size={10} className="text-white" />
+                </div>
               </div>
 
-              <div className="font-mono text-[11px] text-[#554F44] space-y-1 bg-white/70 p-2.5 rounded border border-[#DDD5C5]">
-                <div className="flex justify-between">
-                  <span>Merchant Key:</span>
-                  <span className="font-bold">{payuPayload?.key}</span>
-                </div>
-                <div className="flex justify-between truncate">
-                  <span>Txn ID:</span>
-                  <span className="truncate max-w-[200px]">{payuPayload?.txnid}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Amount:</span>
-                  <span className="font-bold text-[#1A1817]">₹{payuPayload?.amount}</span>
-                </div>
-                <div className="flex justify-between truncate">
-                  <span>SHA-512 Hash:</span>
-                  <span className="truncate max-w-[150px]">{payuPayload?.hash?.substring(0, 16)}...</span>
-                </div>
+              <div className="space-y-1.5">
+                <h3 className="font-serif text-lg font-bold text-[#1A1817]">
+                  Redirecting to PayU...
+                </h3>
+                <p className="text-xs text-[#7A7367] max-w-xs mx-auto">
+                  You are being securely redirected to PayU's hosted checkout page.
+                  Please do not close this window.
+                </p>
               </div>
             </div>
 
-            {/* Payment Method Selector */}
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-[#3D3831]">
-                Select Payment Mode:
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'UPI', label: 'UPI / GPay / PhonePe', icon: Smartphone },
-                  { id: 'CC', label: 'Credit Card', icon: CreditCard },
-                  { id: 'DC', label: 'Debit Card', icon: CreditCard },
-                  { id: 'NB', label: 'Net Banking', icon: Lock },
-                ].map((mode) => {
-                  const Icon = mode.icon;
-                  return (
-                    <button
-                      key={mode.id}
-                      type="button"
-                      onClick={() => setPaymentMode(mode.id as any)}
-                      className={`p-2.5 rounded-lg border text-left flex items-center gap-2 text-xs transition-all ${
-                        paymentMode === mode.id
-                          ? 'bg-[#1A1817] text-white border-[#1A1817]'
-                          : 'bg-[#FAF8F5] text-[#3D3A36] border-[#DDD7CB] hover:bg-white'
-                      }`}
-                    >
-                      <Icon size={14} className={paymentMode === mode.id ? 'text-[#C5A059]' : 'text-[#888]'} />
-                      <span>{mode.label}</span>
-                    </button>
-                  );
-                })}
+            {/* Transaction Details */}
+            <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E8E4DC] font-mono text-[11px] text-[#554F44] space-y-1.5">
+              <div className="flex justify-between">
+                <span>Transaction ID:</span>
+                <span className="font-bold text-[#1A1817] truncate max-w-[200px]">{payuPayload?.txnid}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Amount:</span>
+                <span className="font-bold text-[#1A1817]">₹{payuPayload?.amount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Mode:</span>
+                <span className="font-bold text-[#1A1817] uppercase">{payuPayload?.env || 'TEST'}</span>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="space-y-2 pt-2">
+            {/* Hidden form that auto-submits to PayU */}
+            <form
+              ref={formRef}
+              action={payuPayload?.actionUrl || 'https://test.payu.in/_payment'}
+              method="POST"
+            >
+              <input type="hidden" name="key" value={payuPayload?.key || ''} />
+              <input type="hidden" name="txnid" value={payuPayload?.txnid || ''} />
+              <input type="hidden" name="amount" value={payuPayload?.amount || ''} />
+              <input type="hidden" name="productinfo" value={payuPayload?.productinfo || ''} />
+              <input type="hidden" name="firstname" value={payuPayload?.firstname || ''} />
+              <input type="hidden" name="email" value={payuPayload?.email || ''} />
+              <input type="hidden" name="phone" value={payuPayload?.phone || ''} />
+              <input type="hidden" name="surl" value={payuPayload?.surl || ''} />
+              <input type="hidden" name="furl" value={payuPayload?.furl || ''} />
+              <input type="hidden" name="hash" value={payuPayload?.hash || ''} />
+              <input type="hidden" name="service_provider" value="payu_paisa" />
+
+              {/* Manual fallback button in case auto-submit fails */}
               <button
-                type="button"
-                onClick={handleSimulatePayUSuccess}
-                disabled={loading}
-                className="w-full py-3 bg-[#1A1817] hover:bg-[#33302C] text-white rounded-xl font-bold text-xs tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-2"
+                type="submit"
+                className="w-full py-2.5 bg-white border border-[#DDD7CB] hover:bg-[#FAF8F5] text-[#1A1817] rounded-xl text-[11px] font-medium transition-colors flex items-center justify-center gap-1.5"
               >
-                {loading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle2 size={15} className="text-emerald-400" />
-                    <span>Authorize Payment (Instant PayU Callback)</span>
-                  </>
-                )}
+                <ExternalLink size={12} />
+                <span>Click here if not redirected automatically</span>
               </button>
+            </form>
 
-              {/* Real PayU Form Fallback */}
-              <form action={payuPayload?.actionUrl || 'https://test.payu.in/_payment'} method="post" target="_blank">
-                <input type="hidden" name="key" value={payuPayload?.key || ''} />
-                <input type="hidden" name="txnid" value={payuPayload?.txnid || ''} />
-                <input type="hidden" name="amount" value={payuPayload?.amount || ''} />
-                <input type="hidden" name="productinfo" value={payuPayload?.productinfo || ''} />
-                <input type="hidden" name="firstname" value={payuPayload?.firstname || ''} />
-                <input type="hidden" name="email" value={payuPayload?.email || ''} />
-                <input type="hidden" name="phone" value={payuPayload?.phone || ''} />
-                <input type="hidden" name="surl" value={payuPayload?.surl || ''} />
-                <input type="hidden" name="furl" value={payuPayload?.furl || ''} />
-                <input type="hidden" name="hash" value={payuPayload?.hash || ''} />
-                <input type="hidden" name="service_provider" value="payu_paisa" />
-                
-                <button
-                  type="submit"
-                  className="w-full py-2 bg-[#FAF8F5] border border-[#DDD7CB] text-[#555047] hover:text-[#1A1817] hover:bg-[#F2ECE1] rounded-xl text-[11px] font-medium transition-colors text-center"
-                >
-                  Or Open External PayU Hosted Portal
-                </button>
-              </form>
-            </div>
-
-            <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#8C867B] pt-1">
+            <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#8C867B]">
               <ShieldCheck size={12} className="text-[#5A705E]" />
-              <span>SHA-512 Signature Generated • Production Ready</span>
+              <span>SHA-512 Signature Verified • Secure Connection</span>
             </div>
-
           </div>
         )}
 

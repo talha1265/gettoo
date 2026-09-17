@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   User, 
@@ -17,12 +17,26 @@ import {
 } from 'lucide-react';
 import { useAtelier } from '@/lib/store';
 import { INITIAL_ORDERS } from '@/lib/mock-data';
+import { CartItem } from '@/lib/types';
 import OrderStitchTracker from '@/components/OrderStitchTracker';
 
 export default function ProfilePage() {
   const { user, loginDemoUser } = useAtelier();
   const [activeTab, setActiveTab] = useState<'ORDERS' | 'ADDRESSES' | 'DESIGNS'>('ORDERS');
+  const [ordersList, setOrdersList] = useState<any[]>(INITIAL_ORDERS);
   const [selectedOrderForTracking, setSelectedOrderForTracking] = useState<any>(INITIAL_ORDERS[0]);
+
+  useEffect(() => {
+    fetch('/api/orders')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.orders) && data.orders.length > 0) {
+          setOrdersList(data.orders);
+          setSelectedOrderForTracking(data.orders[0]);
+        }
+      })
+      .catch((e) => console.error('Error fetching profile orders:', e));
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -115,11 +129,11 @@ export default function ProfilePage() {
           {/* Orders History List */}
           <div className="space-y-4">
             <h3 className="font-serif text-base font-bold text-[#1A1817]">
-              All Orders ({INITIAL_ORDERS.length})
+              All Orders ({ordersList.length})
             </h3>
 
             <div className="space-y-4">
-              {INITIAL_ORDERS.map((ord) => (
+              {ordersList.map((ord) => (
                 <div
                   key={ord.id}
                   className="bg-white p-5 rounded-2xl border border-[#E8E4DC] shadow-xs space-y-4"
@@ -161,7 +175,7 @@ export default function ProfilePage() {
 
                   {/* Items */}
                   <div className="space-y-3">
-                    {ord.items.map((it) => (
+                    {ord.items.map((it: CartItem) => (
                       <div key={it.id} className="flex gap-3.5 items-center">
                         <div className="w-14 h-16 bg-[#F5F2EB] rounded-lg overflow-hidden shrink-0 border border-[#DDD7CB]">
                           <img 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search, Sparkles, Package, AlertCircle } from 'lucide-react';
 import { INITIAL_ORDERS } from '@/lib/mock-data';
@@ -11,22 +11,72 @@ function TrackContent() {
   const queryId = searchParams.get('id') || '';
 
   const [orderQuery, setOrderQuery] = useState(queryId);
-  const [matchedOrder, setMatchedOrder] = useState<any>(
-    queryId 
-      ? INITIAL_ORDERS.find((o) => o.orderNumber.toLowerCase() === queryId.toLowerCase() || o.id === queryId) 
-      : INITIAL_ORDERS[0]
-  );
+  const [matchedOrder, setMatchedOrder] = useState<any>(null);
   const [searched, setSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Initial load if queryId present
+  useEffect(() => {
+    if (queryId) {
+      findOrder(queryId);
+    } else {
+      // Default to first order from mock data if none searched
+      setMatchedOrder(INITIAL_ORDERS[0]);
+    }
+  }, [queryId]);
+
+  const findOrder = async (query: string) => {
+    const q = query.trim();
+    if (!q) return;
+    setIsSearching(true);
+    setSearched(true);
+
+    try {
+      // 1. Try direct orderNumber lookup
+      const res = await fetch(`/api/orders/${q}`);
+      const data = await res.json();
+      if (data.success && data.order) {
+        setMatchedOrder(data.order);
+        setIsSearching(false);
+        return;
+      }
+
+      // 2. Try fetching all orders to match email or txn id
+      const allRes = await fetch('/api/orders');
+      const allData = await allRes.json();
+      if (allData.success && Array.isArray(allData.orders)) {
+        const found = allData.orders.find((o: any) =>
+          o.orderNumber?.toLowerCase() === q.toLowerCase() ||
+          o.customerEmail?.toLowerCase() === q.toLowerCase() ||
+          o.customerPhone?.toLowerCase() === q.toLowerCase() ||
+          o.payuTxnId?.toLowerCase() === q.toLowerCase() ||
+          o.paymentTransactionId?.toLowerCase() === q.toLowerCase()
+        );
+        if (found) {
+          setMatchedOrder(found);
+          setIsSearching(false);
+          return;
+        }
+      }
+
+      // 3. Fallback to mock data
+      const mockFound = INITIAL_ORDERS.find((o) =>
+        o.orderNumber.toLowerCase() === q.toLowerCase() ||
+        o.customerEmail.toLowerCase() === q.toLowerCase() ||
+        o.payuTxnId?.toLowerCase() === q.toLowerCase()
+      );
+      setMatchedOrder(mockFound || null);
+    } catch (e) {
+      console.error('Error tracking order:', e);
+      setMatchedOrder(null);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setSearched(true);
-    const found = INITIAL_ORDERS.find((o) => 
-      o.orderNumber.toLowerCase() === orderQuery.trim().toLowerCase() ||
-      o.customerEmail.toLowerCase() === orderQuery.trim().toLowerCase() ||
-      o.payuTxnId?.toLowerCase() === orderQuery.trim().toLowerCase()
-    );
-    setMatchedOrder(found || null);
+    findOrder(orderQuery);
   };
 
   return (
